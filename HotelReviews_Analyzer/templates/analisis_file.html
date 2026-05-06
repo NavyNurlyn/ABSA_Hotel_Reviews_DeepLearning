@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+{% block title %}Analisis File — HotelAnalyzer AI{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+.upload-zone {
+  border:2px dashed #c7d7fd;border-radius:14px;padding:28px 20px;
+  text-align:center;cursor:pointer;transition:all .2s;background:#f8faff;
+  position:relative;min-height:150px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.upload-zone:hover,.upload-zone.dragover{border-color:#1a56db;background:#eff4ff;}
+.upload-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.tabel-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e8f0fe;}
+#tabelHasil{font-size:13px;margin:0;width:100%;}
+#tabelHasil thead th{background:#1a56db;color:#fff;font-weight:600;padding:10px 12px;border:none;position:sticky;top:0;z-index:2;white-space:nowrap;}
+#tabelHasil td{padding:8px 12px;vertical-align:top;border-color:#f1f5f9;}
+#tabelHasil tbody tr:hover td{background:#f8faff!important;}
+.teks-cell{min-width:260px;max-width:400px;white-space:pre-wrap;word-break:break-word;line-height:1.55;font-size:13px;}
+.aspek-cell{text-align:center;white-space:nowrap;font-weight:600;font-size:12px;min-width:80px;}
+.chart-card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.chart-title{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:10px;}
+.filter-input{border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:13px;outline:none;transition:border-color .2s;}
+.filter-input:focus{border-color:#1a56db;}
+.page-btn{width:30px;height:30px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:all .15s;user-select:none;}
+.page-btn:hover,.page-btn.active{background:#1a56db;color:#fff;border-color:#1a56db;}
+.kw-cloud{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.kw-chip{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;cursor:default;}
+.kw-chip.pos{background:#dcfce7;color:#166534;}
+.kw-chip.neg{background:#fee2e2;color:#991b1b;}
+.step-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f1f5f9;}
+.step-item:last-child{border:none;}
+.step-num{width:26px;height:26px;background:#1a56db;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0;}
+.aspek-tab{padding:5px 16px;border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:#475569;}
+.aspek-tab.active{border-color:#1a56db;background:#1a56db;color:#fff;}
+.sum-chip{border-radius:10px;padding:10px;text-align:center;}
+.filter-active-bar{background:#eff4ff;border:1px solid #c7d7fd;border-radius:10px;padding:8px 14px;font-size:13px;display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+  <div style="width:38px;height:38px;background:#e0f2fe;border-radius:10px;display:flex;align-items:center;justify-content:center">
+    <i class="bi bi-file-earmark-bar-graph" style="font-size:18px;color:#0369a1"></i>
+  </div>
+  <div>
+    <h4 class="mb-0">Analisis File Ulasan</h4>
+    <div class="text-muted" style="font-size:13px">Upload file CSV/Excel untuk analisis batch</div>
+  </div>
+</div>
+
+<!-- Upload + Panduan -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card-modern">
+      <div class="fw-semibold mb-3" style="font-size:14px"><i class="bi bi-upload me-2 text-primary"></i>Upload File</div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(this)">
+        <i class="bi bi-cloud-arrow-up" style="font-size:32px;color:#c7d7fd;margin-bottom:8px"></i>
+        <div class="fw-semibold" style="color:#1a56db;font-size:14px">Klik atau seret file ke sini</div>
+        <div class="text-muted mt-1" style="font-size:12px">CSV, XLSX, XLS · Maks 10 MB · 1000 ulasan</div>
+        <div id="selectedFile" class="mt-2 fw-semibold" style="font-size:13px;color:#1a56db"></div>
+      </div>
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn-primary-custom flex-fill" onclick="analisisFile()"><i class="bi bi-play-circle me-2"></i>Analisis Ulasan</button>
+        <a href="/api/template" class="btn btn-outline-primary rounded-3" style="font-size:14px;font-weight:600;padding:9px 16px;white-space:nowrap"><i class="bi bi-download me-1"></i>Template</a>
+      </div>
+      <div id="summaryWrap" style="display:none" class="mt-3 pt-3 border-top"><div id="summaryContent"></div></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card-modern">
+      <div class="fw-semibold mb-2" style="font-size:14px"><i class="bi bi-info-circle me-2 text-primary"></i>Panduan</div>
+      <div class="step-item"><div class="step-num">1</div><div><div class="fw-semibold" style="font-size:13px">Download Template</div><div class="text-muted" style="font-size:12px">Klik tombol "Template" untuk file Excel siap pakai</div></div></div>
+      <div class="step-item"><div class="step-num">2</div><div><div class="fw-semibold" style="font-size:13px">Isi Data</div><div class="text-muted" style="font-size:12px"><b>Teks Ulasan</b> (wajib) · Tanggal Ulasan · Rating · Username (opsional)</div></div></div>
+      <div class="step-item"><div class="step-num">3</div><div><div class="fw-semibold" style="font-size:13px">Upload &amp; Analisis</div><div class="text-muted" style="font-size:12px">Upload file, klik "Analisis Ulasan"</div></div></div>
+      <div class="step-item"><div class="step-num">4</div><div><div class="fw-semibold" style="font-size:13px">Lihat &amp; Download</div><div class="text-muted" style="font-size:12px">Tabel hasil + dashboard di bawah · Download CSV/Excel/PDF</div></div></div>
+      <div class="mt-2 p-2 rounded-3" style="background:#fefce8;border:1px solid #fde68a;font-size:12px;color:#92400e">Format tanggal: YYYY-MM-DD · Inggris otomatis diterjemahkan · Bahasa lain dilewati</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabel full width -->
+<div id="tabelSection" style="display:none" class="mb-4">
+  <div class="card-modern">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div class="fw-bold" style="font-size:15px"><i class="bi bi-table me-2 text-primary"></i>Hasil Analisis</div>
+      <div class="d-flex gap-2 flex-wrap align-items-center">
+        <input type="text" class="filter-input" id="searchInput" placeholder="Cari ulasan..." oninput="filterTabel()" style="width:150px">
+        <select class="filter-input" id="filterAspek" onchange="filterTabel()">
+          <option value="">Semua Aspek</option>
+          <option>Room</option><option>Hotel</option><option>Location</option><option>Service</option>
+        </select>
+        <select class="filter-input" id="filterSentimen" onchange="filterTabel()">
+          <option value="">Semua</option><option>Positif</option><option>Negatif</option>
+        </select>
+        <button class="btn btn-sm btn-outline-secondary rounded-3" onclick="resetFilter()" title="Hapus semua filter"><i class="bi bi-x-circle me-1"></i>Reset</button>
+        <button class="btn btn-sm btn-outline-success rounded-3" onclick="downloadHasil('csv')"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+        <button class="btn btn-sm btn-outline-success rounded-3" onclick="downloadHasil('xlsx')"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+      </div>
+    </div>
+    <!-- Indikator filter aktif -->
+    <div id="filterActiveBar" style="display:none" class="filter-active-bar mb-2">
+      <i class="bi bi-funnel-fill text-primary"></i>
+      <span id="filterActiveText"></span>
+      <button class="btn btn-sm btn-primary rounded-3 ms-auto" onclick="resetFilter()" style="padding:2px 12px;font-size:12px">Hapus Filter</button>
+    </div>
+    <div class="tabel-wrap">
+      <table class="table table-hover" id="tabelHasil" style="border-color:#e8f0fe">
+        <thead></thead><tbody></tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+      <div class="text-muted" style="font-size:12px" id="paginasiInfo"></div>
+      <div id="paginasiNav" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboardSection" style="display:none">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="fw-bold" style="font-size:16px"><i class="bi bi-graph-up me-2 text-primary"></i>Dashboard Visualisasi</div>
+    <button class="btn btn-outline-primary btn-sm rounded-3" onclick="downloadDashboardPDF()"><i class="bi bi-file-earmark-pdf me-1"></i>Simpan PDF</button>
+  </div>
+
+  <div id="dashboardContent">
+    <!-- Row 1: Pie aspek + Bar sentimen -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-5">
+        <div class="chart-card" style="height:280px">
+          <div class="chart-title">Distribusi Aspek Dibahas &nbsp;<span style="font-size:11px;font-weight:400;color:#94a3b8">— klik batang untuk filter tabel</span></div>
+          <div style="height:230px;position:relative"><canvas id="chartAspekPie"></canvas></div>
+        </div>
+      </div>
+      <div class="col-md-7">
+        <div class="chart-card" style="height:280px">
+          <div class="chart-title">Distribusi Sentimen per Aspek</div>
+          <div style="height:230px;position:relative"><canvas id="chartSentimenAspek"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Time series -->
+    <div class="card-modern mb-4">
+      <div class="fw-bold mb-2" style="font-size:14px">Tren Sentimen per Bulan (Semua Aspek)</div>
+      <div style="height:250px;position:relative"><canvas id="chartTimeSeries"></canvas></div>
+      <div class="text-muted mt-1" style="font-size:11px">Garis penuh = Positif · Garis putus = Negatif · Tersedia jika kolom "Tanggal Ulasan" diisi</div>
+    </div>
+
+    <!-- Deep Dive -->
+    <div class="card-modern">
+      <div class="fw-bold mb-1" style="font-size:15px">Deep Dive per Aspek</div>
+      <div class="text-muted mb-3" style="font-size:12px">Klik segmen pie chart untuk filter tabel. Gunakan tombol Reset untuk kembali.</div>
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        <button class="aspek-tab active" onclick="switchAspek('Room',this)">Room</button>
+        <button class="aspek-tab" onclick="switchAspek('Hotel',this)">Hotel</button>
+        <button class="aspek-tab" onclick="switchAspek('Location',this)">Location</button>
+        <button class="aspek-tab" onclick="switchAspek('Service',this)">Service</button>
+      </div>
+      <div id="deepContent"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let allData=[],filtered=[],pageSize=15,currPage=1,statsData=null,currentAspek='Room';
+const charts={};
+
+// File upload
+function handleFileSelect(inp){if(inp.files.length) document.getElementById('selectedFile').textContent='✓ '+inp.files[0].name;}
+const zone=document.getElementById('uploadZone');
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('dragover');});
+zone.addEventListener('dragleave',()=>zone.classList.remove('dragover'));
+zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('dragover');document.getElementById('fileInput').files=e.dataTransfer.files;handleFileSelect(document.getElementById('fileInput'));});
+
+async function analisisFile(){
+  const inp=document.getElementById('fileInput');
+  if(!inp.files.length){alert('Pilih file terlebih dahulu!');return;}
+  const fd=new FormData();fd.append('file',inp.files[0]);
+  showLoading('Memproses file ulasan...');
+  try{
+    const resp=await fetch('/api/analisis-file',{method:'POST',body:fd});
+    const data=await resp.json();hideLoading();
+    if(data.status==='error'){alert('Error: '+data.pesan);return;}
+    allData=data.tabel;filtered=[...allData];statsData=data.stats;
+    renderSummary(data);
+    document.getElementById('summaryWrap').style.display='block';
+    renderTabel();
+    document.getElementById('tabelSection').style.display='block';
+    renderDashboard(data.stats);
+    document.getElementById('dashboardSection').style.display='block';
+    document.getElementById('tabelSection').scrollIntoView({behavior:'smooth'});
+  }catch(e){hideLoading();alert('Gagal: '+e.message);}
+}
+
+function renderSummary(data){
+  const s=data.stats;
+  // Keterangan dilewati
+  const skipInfo = data.n_skip > 0
+    ? `<div style="margin-top:8px;padding:6px 12px;background:#fefce8;border-radius:8px;border:1px solid #fde68a;font-size:12px;color:#92400e;display:flex;justify-content:space-between;align-items:center">
+        <span>⚠️ <b>${data.n_skip} ulasan dilewati</b> (bahasa tidak didukung / terlalu pendek)</span>
+        <button onclick="tampilkanDilewati()" class="btn btn-sm rounded-3" style="font-size:11px;padding:2px 10px;background:#fde68a;border:none;font-weight:600;cursor:pointer">Lihat detail</button>
+       </div>`
+    : '';
+  document.getElementById('summaryContent').innerHTML=`
+  <div class="d-flex gap-3 flex-wrap">
+    <div class="sum-chip flex-fill" style="background:#f0f9ff;min-width:100px">
+      <div style="font-size:20px;font-weight:800;color:#0369a1">${data.n_total}</div>
+      <div style="font-size:11px;color:#6b7280">Total Ulasan</div>
+    </div>
+    <div class="sum-chip flex-fill" style="background:#f0fdf4;min-width:100px">
+      <div style="font-size:20px;font-weight:800;color:#166534">${s.total_pos}</div>
+      <div style="font-size:11px;color:#6b7280">Total Positif</div>
+    </div>
+    <div class="sum-chip flex-fill" style="background:#fff1f2;min-width:100px">
+      <div style="font-size:20px;font-weight:800;color:#991b1b">${s.total_neg}</div>
+      <div style="font-size:11px;color:#6b7280">Total Negatif</div>
+    </div>
+    <div class="sum-chip flex-fill" style="background:#f8fafc;min-width:100px">
+      <div style="font-size:20px;font-weight:800;color:#64748b">${data.n_valid}</div>
+      <div style="font-size:11px;color:#6b7280">Berhasil Dianalisis</div>
+    </div>
+  </div>
+  ${skipInfo}`;
+  // Simpan data dilewati untuk ditampilkan jika perlu
+  window._skippedData = data.skipped || [];
+}
+
+function tampilkanDilewati(){
+  const items = window._skippedData || [];
+  if(!items.length){ alert('Tidak ada detail tersedia.'); return; }
+  let rows = items.map((it,i)=>`
+    <tr>
+      <td style="font-size:12px;color:#6b7280">${it.idx+1}</td>
+      <td style="font-size:13px">${it.teks}...</td>
+      <td><span class="badge bg-warning text-dark" style="font-size:11px">${it.lang==='id'||it.lang==='en'?'Terlalu pendek':'Bahasa: '+it.lang}</span></td>
+    </tr>`).join('');
+  document.getElementById('modalUlasanText').innerHTML = `
+    <p style="font-size:13px;color:#475569;margin-bottom:10px">
+      Ulasan berikut tidak dianalisis karena bahasa tidak didukung
+      (selain Indonesia/Inggris) atau terlalu pendek (&lt; 3 kata setelah preprocessing).
+    </p>
+    <table class="table table-sm table-bordered" style="font-size:13px">
+      <thead><tr><th>#</th><th>Ulasan (ringkasan)</th><th>Alasan</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="font-size:12px;color:#94a3b8;margin-top:8px">Hanya menampilkan 5 pertama. Total dilewati: ${window._nSkip||0}</p>`;
+  window._nSkip = items.length;
+  new bootstrap.Modal(document.getElementById('modalUlasan')).show();
+}
+
+// Tabel - kolom utama: Teks Ulasan + 4 Aspek (sticky), lalu metadata
+const COL_PRIORITY=['Teks Ulasan','Aspek Room','Aspek Hotel','Aspek Location','Aspek Service'];
+const COL_META=['Tanggal Ulasan','Rating','Username'];
+
+function getCols(){
+  if(!allData.length) return [];
+  const all=Object.keys(allData[0]).filter(c=>!['lang','nonstem','stemmed'].includes(c));
+  const pri=COL_PRIORITY.filter(c=>all.includes(c));
+  const meta=COL_META.filter(c=>all.includes(c));
+  const rest=all.filter(c=>![...COL_PRIORITY,...COL_META].includes(c));
+  return [...pri,...meta,...rest];
+}
+
+function renderTabel(){
+  if(!allData.length) return;
+  const cols=getCols();
+  document.getElementById('tabelHasil').querySelector('thead').innerHTML=
+    '<tr>'+cols.map(c=>`<th onclick="sortTabel('${c}')" style="cursor:pointer">${c} <i class="bi bi-arrow-down-up" style="font-size:10px;opacity:.5"></i></th>`).join('')+'</tr>';
+  renderPage();
+}
+
+function renderPage(){
+  const cols=getCols();
+  const tbody=document.getElementById('tabelHasil').querySelector('tbody');
+  const start=(currPage-1)*pageSize;
+  const slice=filtered.slice(start,start+pageSize);
+  tbody.innerHTML=slice.map(row=>'<tr>'+cols.map(c=>{
+    const val=String(row[c]||'');
+    if(c==='Teks Ulasan') return `<td><div class="teks-cell">${val}</div></td>`;
+    if(c.startsWith('Aspek')){
+      if(val==='Positif') return `<td class="aspek-cell" style="background:#f0fdf4;color:#166534">Positif</td>`;
+      if(val==='Negatif') return `<td class="aspek-cell" style="background:#fff1f2;color:#991b1b">Negatif</td>`;
+      return `<td class="aspek-cell" style="color:#94a3b8">-</td>`;
+    }
+    return `<td style="white-space:nowrap;font-size:13px">${val}</td>`;
+  }).join('')+'</tr>').join('');
+  renderPaginasi();
+}
+
+function renderPaginasi(){
+  const total=filtered.length,pages=Math.ceil(total/pageSize);
+  document.getElementById('paginasiInfo').textContent=`${Math.min((currPage-1)*pageSize+1,total)}–${Math.min(currPage*pageSize,total)} dari ${total} ulasan`;
+  let nav=`<div class="page-btn" onclick="goPage(${currPage-1})" style="${currPage<=1?'opacity:.35':''}">‹</div>`;
+  const s=Math.max(1,currPage-2),e=Math.min(pages,s+4);
+  for(let p=s;p<=e;p++) nav+=`<div class="page-btn ${p===currPage?'active':''}" onclick="goPage(${p})">${p}</div>`;
+  nav+=`<div class="page-btn" onclick="goPage(${currPage+1})" style="${currPage>=pages?'opacity:.35':''}">›</div>`;
+  document.getElementById('paginasiNav').innerHTML=nav;
+}
+
+function goPage(p){const pages=Math.ceil(filtered.length/pageSize);if(p<1||p>pages)return;currPage=p;renderPage();}
+
+let sortDir={};
+function sortTabel(col){
+  sortDir[col]=!sortDir[col];
+  filtered.sort((a,b)=>{const av=String(a[col]||''),bv=String(b[col]||'');return sortDir[col]?av.localeCompare(bv):bv.localeCompare(av);});
+  currPage=1;renderPage();
+}
+
+// Filter dengan indikator aktif
+let activeFilterAspek='',activeFilterSentimen='';
+function filterTabel(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  activeFilterAspek=document.getElementById('filterAspek').value;
+  activeFilterSentimen=document.getElementById('filterSentimen').value;
+  filtered=allData.filter(row=>{
+    if(q&&!String(row['Teks Ulasan']||'').toLowerCase().includes(q)) return false;
+    if(activeFilterAspek&&activeFilterSentimen&&row[`Aspek ${activeFilterAspek}`]!==activeFilterSentimen) return false;
+    else if(activeFilterAspek&&!activeFilterSentimen&&row[`Aspek ${activeFilterAspek}`]==='-') return false;
+    else if(!activeFilterAspek&&activeFilterSentimen&&!['Room','Hotel','Location','Service'].some(a=>row[`Aspek ${a}`]===activeFilterSentimen)) return false;
+    return true;
+  });
+  currPage=1;renderPage();
+  _updateFilterBar(q);
+}
+
+function _updateFilterBar(q=''){
+  const bar=document.getElementById('filterActiveBar');
+  const txt=document.getElementById('filterActiveText');
+  if(activeFilterAspek||activeFilterSentimen||q){
+    let parts=[];
+    if(q) parts.push(`Cari: "${q}"`);
+    if(activeFilterAspek) parts.push(`Aspek: ${activeFilterAspek}`);
+    if(activeFilterSentimen) parts.push(`Sentimen: ${activeFilterSentimen}`);
+    txt.innerHTML='<b>Filter aktif:</b> '+parts.join(' &nbsp;·&nbsp; ')+` &nbsp;<span style="color:#64748b">(${filtered.length} hasil)</span>`;
+    bar.style.display='flex';
+    if(activeFilterAspek) renderTimelineFiltered(activeFilterAspek,activeFilterSentimen||null);
+  } else {
+    bar.style.display='none';
+    if(statsData) renderTimeSeries(statsData.time_series);
+  }
+}
+
+function resetFilter(){
+  document.getElementById('searchInput').value='';
+  document.getElementById('filterAspek').value='';
+  document.getElementById('filterSentimen').value='';
+  activeFilterAspek='';activeFilterSentimen='';
+  filtered=[...allData];currPage=1;renderPage();
+  document.getElementById('filterActiveBar').style.display='none';
+  if(statsData) renderTimeSeries(statsData.time_series);
+}
+
+async function downloadHasil(fmt){
+  const resp=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tabel:allData,format:fmt})});
+  const blob=await resp.blob();const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`hasil_analisis.${fmt}`;a.click();URL.revokeObjectURL(url);
+}
+
+// Dashboard
+const AC={Room:{bg:'rgba(59,130,246,.8)',b:'#1d4ed8'},Hotel:{bg:'rgba(139,92,246,.8)',b:'#6d28d9'},Location:{bg:'rgba(16,185,129,.8)',b:'#065f46'},Service:{bg:'rgba(245,158,11,.8)',b:'#92400e'}};
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function renderDashboard(stats){
+  // Bar: aspek paling banyak dibahas — biru semua + klik filter tabel
+  dc('aspekPie');
+  const ak=Object.keys(stats.aspek_dist);
+  const blues=['rgba(26,86,219,.85)','rgba(14,165,233,.85)','rgba(59,130,246,.85)','rgba(99,179,237,.85)'];
+  charts['aspekPie']=new Chart(document.getElementById('chartAspekPie'),{
+    type:'bar',
+    data:{
+      labels:ak,
+      datasets:[{
+        label:'Jumlah Ulasan',
+        data:Object.values(stats.aspek_dist),
+        backgroundColor:ak.map((_,i)=>blues[i%blues.length]),
+        borderRadius:8,borderSkipped:false,
+        hoverBackgroundColor:ak.map(()=>'rgba(15,36,96,.9)')
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:items=>`Aspek ${items[0].label}`,
+          label:ctx=>{
+            const tot=Object.values(stats.aspek_dist).reduce((a,b)=>a+b,0);
+            const pct=tot>0?Math.round(ctx.raw/tot*100):0;
+            return ` ${ctx.raw} ulasan (${pct}%) — klik untuk filter`;
+          }
+        }}
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f1f5f9'}},
+        x:{grid:{display:false},ticks:{maxRotation:0,font:{size:12,weight:'600'}}}
+      },
+      onClick:(e,els)=>{
+        if(!els.length) return;
+        const aspek=ak[els[0].index];
+        document.getElementById('filterAspek').value=aspek;
+        document.getElementById('filterSentimen').value='';
+        filterTabel();
+        document.getElementById('tabelSection').scrollIntoView({behavior:'smooth'});
+      }
+    }
+  });
+
+  // Bar grouped: sentimen per aspek
+  dc('sentimenAspek');
+  charts['sentimenAspek']=new Chart(document.getElementById('chartSentimenAspek'),{
+    type:'bar',
+    data:{labels:ak,datasets:[
+      {label:'Positif',data:ak.map(a=>stats.sentimen_per_aspek[a]?.Positif||0),backgroundColor:'rgba(22,163,74,.8)',borderRadius:6,borderSkipped:false},
+      {label:'Negatif',data:ak.map(a=>stats.sentimen_per_aspek[a]?.Negatif||0),backgroundColor:'rgba(220,38,38,.8)',borderRadius:6,borderSkipped:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:13,font:{size:12},padding:14}}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:{maxRotation:0}}}}
+  });
+
+  renderTimeSeries(stats.time_series);
+  switchAspek('Room',document.querySelector('.aspek-tab'));
+}
+
+function renderTimeSeries(ts){
+  dc('ts');
+  const ctx=document.getElementById('chartTimeSeries');
+  if(!ts||!ts.length){
+    // Tampilan bagus saat tidak ada data tanggal
+    ctx.style.display='none';
+    const wrap=ctx.parentElement;
+    if(!wrap.querySelector('.no-date-msg')){
+      const msg=document.createElement('div');
+      msg.className='no-date-msg';
+      msg.style.cssText='height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;';
+      msg.innerHTML=`
+        <div style="width:52px;height:52px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:24px">📅</div>
+        <div style="font-weight:700;color:#475569;font-size:14px">Data Tanggal Tidak Tersedia</div>
+        <div style="font-size:12px;color:#94a3b8;text-align:center;max-width:280px;line-height:1.5">
+          Tambahkan kolom <b>Tanggal Ulasan</b> (format YYYY-MM-DD) pada file upload untuk melihat tren sentimen per bulan.
+        </div>`;
+      wrap.appendChild(msg);
+    }
+    return;
+  }
+  // Sembunyikan pesan jika ada data
+  const wrap=ctx.parentElement;
+  const msg=wrap.querySelector('.no-date-msg');
+  if(msg) msg.remove();
+  ctx.style.display='';
+  const bulan=[...new Set(ts.map(r=>r.bulan))].sort();
+  const aspek=['Room','Hotel','Location','Service'];
+  const colors={Room:'#3b82f6',Hotel:'#8b5cf6',Location:'#10b981',Service:'#f59e0b'};
+  const datasets=aspek.flatMap(a=>[
+    {label:`${a} Pos`,data:bulan.map(b=>{const r=ts.find(d=>d.aspek===a&&d.bulan===b);return r?r.Positif:0;}),
+      borderColor:colors[a],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,fill:false},
+    {label:`${a} Neg`,data:bulan.map(b=>{const r=ts.find(d=>d.aspek===a&&d.bulan===b);return r?r.Negatif:0;}),
+      borderColor:colors[a],backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,tension:.3,fill:false,borderDash:[5,4]}
+  ]);
+  charts['ts']=new Chart(ctx,{type:'line',data:{labels:bulan,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11},padding:10}}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:{maxRotation:30,font:{size:11}}}}}
+  });
+}
+
+// Timeline hanya 1 aspek + 1 sentimen (saat filter aktif)
+function renderTimelineFiltered(aspek,sentimen){
+  if(!statsData||!statsData.time_series||!statsData.time_series.length) return;
+  const ts=statsData.time_series;
+  const bulan=[...new Set(ts.map(r=>r.bulan))].sort();
+  const colors={Room:'#3b82f6',Hotel:'#8b5cf6',Location:'#10b981',Service:'#f59e0b'};
+  let datasets=[];
+  if(!sentimen){
+    // Tampilkan pos & neg aspek tersebut
+    datasets=[
+      {label:`${aspek} Positif`,data:bulan.map(b=>{const r=ts.find(d=>d.aspek===aspek&&d.bulan===b);return r?r.Positif:0;}),borderColor:colors[aspek],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,fill:false},
+      {label:`${aspek} Negatif`,data:bulan.map(b=>{const r=ts.find(d=>d.aspek===aspek&&d.bulan===b);return r?r.Negatif:0;}),borderColor:colors[aspek],backgroundColor:'transparent',borderWidth:1.5,pointRadius:2,tension:.3,fill:false,borderDash:[5,4]}
+    ];
+  } else {
+    const key=sentimen==='Positif'?'Positif':'Negatif';
+    const col=sentimen==='Positif'?'rgba(22,163,74,.8)':'rgba(220,38,38,.8)';
+    datasets=[{label:`${aspek} ${sentimen}`,data:bulan.map(b=>{const r=ts.find(d=>d.aspek===aspek&&d.bulan===b);return r?r[key]:0;}),borderColor:col,backgroundColor:col+'22',borderWidth:2.5,pointRadius:4,tension:.3,fill:true}];
+  }
+  dc('ts');
+  charts['ts']=new Chart(document.getElementById('chartTimeSeries'),{type:'line',data:{labels:bulan,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:13,font:{size:12},padding:12}}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:{maxRotation:30,font:{size:11}}}}}
+  });
+}
+
+function switchAspek(aspek,btn){
+  currentAspek=aspek;
+  document.querySelectorAll('.aspek-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(!statsData) return;
+  const kw=statsData.keywords[aspek]||{};
+  const sent=statsData.sentimen_per_aspek[aspek]||{};
+  const posN=sent.Positif||0,negN=sent.Negatif||0,total=posN+negN;
+  const posKw=(kw.Positif||[]).map(k=>`<span class="kw-chip pos" title="${k.frekuensi}x">${k.kata}</span>`).join('');
+  const negKw=(kw.Negatif||[]).map(k=>`<span class="kw-chip neg" title="${k.frekuensi}x">${k.kata}</span>`).join('');
+
+  // Timeline aspek ini
+  const ts=statsData.time_series||[];
+  const bulan=[...new Set(ts.map(r=>r.bulan))].sort();
+  const hasTS=bulan.length>0;
+
+  document.getElementById('deepContent').innerHTML=`
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="chart-card">
+        <div class="chart-title">Distribusi Sentimen — ${aspek}</div>
+        <div style="height:200px;position:relative"><canvas id="chartPie"></canvas></div>
+        <div class="text-center mt-2" style="font-size:13px">
+          <span style="color:#166534;font-weight:700">${posN} Positif</span>
+          <span class="mx-2">·</span>
+          <span style="color:#991b1b;font-weight:700">${negN} Negatif</span>
+        </div>
+        <div class="text-muted text-center mt-1" style="font-size:11px">Klik segmen untuk filter tabel &amp; grafik</div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="p-3 rounded-3 mb-2" style="background:#f0fdf4;border:1px solid #bbf7d0">
+        <div class="fw-semibold mb-2" style="font-size:13px;color:#166534">Top Word Positif</div>
+        <div class="kw-cloud">${posKw||'<span style="font-size:12px;color:#6b7280">Tidak ada data</span>'}</div>
+      </div>
+      <div class="p-3 rounded-3" style="background:#fff1f2;border:1px solid #fecaca">
+        <div class="fw-semibold mb-2" style="font-size:13px;color:#991b1b">Top Word Negatif</div>
+        <div class="kw-cloud">${negKw||'<span style="font-size:12px;color:#6b7280">Tidak ada data</span>'}</div>
+      </div>
+    </div>
+    <!-- Timeline per aspek (full width) -->
+    <div class="col-12">
+      <div class="chart-card">
+        <div class="chart-title">Tren Sentimen ${aspek} per Bulan</div>
+        ${hasTS?`<div style="height:200px;position:relative"><canvas id="chartDeepTS"></canvas></div>`:'<div class="text-muted" style="font-size:12px;padding:20px 0;text-align:center">Data tanggal tidak tersedia</div>'}
+      </div>
+    </div>
+  </div>`;
+
+  // Pie
+  dc('pie');
+  charts['pie']=new Chart(document.getElementById('chartPie'),{
+    type:'pie',
+    data:{labels:['Positif','Negatif'],datasets:[{data:[posN,negN],backgroundColor:['rgba(22,163,74,.85)','rgba(220,38,38,.85)'],borderColor:'#fff',borderWidth:3,hoverOffset:10}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11},padding:12}},
+        tooltip:{callbacks:{label:ctx=>{const pct=total>0?Math.round(ctx.raw/total*100):0;return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;}}}},
+      onClick:(e,els)=>{
+        if(!els.length) return;
+        const sentimen=els[0].index===0?'Positif':'Negatif';
+        document.getElementById('filterAspek').value=aspek;
+        document.getElementById('filterSentimen').value=sentimen;
+        filterTabel();
+        renderTimelineFiltered(aspek,sentimen);
+        document.getElementById('tabelSection').scrollIntoView({behavior:'smooth'});
+      }
+    }
+  });
+
+  // Timeline deep dive aspek
+  if(hasTS){
+    dc('deepTS');
+    const colors2={Room:'#3b82f6',Hotel:'#8b5cf6',Location:'#10b981',Service:'#f59e0b'};
+    const col=colors2[aspek]||'#1a56db';
+    charts['deepTS']=new Chart(document.getElementById('chartDeepTS'),{
+      type:'line',
+      data:{labels:bulan,datasets:[
+        {label:'Positif',data:bulan.map(b=>{const r=ts.find(d=>d.aspek===aspek&&d.bulan===b);return r?r.Positif:0;}),borderColor:'rgba(22,163,74,.9)',backgroundColor:'rgba(22,163,74,.08)',borderWidth:2,pointRadius:3,tension:.3,fill:true},
+        {label:'Negatif',data:bulan.map(b=>{const r=ts.find(d=>d.aspek===aspek&&d.bulan===b);return r?r.Negatif:0;}),borderColor:'rgba(220,38,38,.9)',backgroundColor:'rgba(220,38,38,.06)',borderWidth:2,pointRadius:3,tension:.3,fill:true,borderDash:[5,4]}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11},padding:12}}},
+        scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'#f1f5f9'}},x:{grid:{display:false},ticks:{maxRotation:30,font:{size:11}}}}}
+    });
+  }
+}
+
+async function downloadDashboardPDF(){
+  const el=document.getElementById('dashboardContent');
+  if(!el){alert('Dashboard belum tersedia');return;}
+  showLoading('Membuat PDF...');
+  try{
+    const canvas=await html2canvas(el,{scale:1.5,useCORS:true,backgroundColor:'#f0f4ff'});
+    const imgData=canvas.toDataURL('image/png');
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const w=pdf.internal.pageSize.getWidth(),h=pdf.internal.pageSize.getHeight();
+    const ratio=canvas.width/canvas.height;
+    let iw=w-20,ih=iw/ratio;
+    if(ih>h-30){ih=h-30;iw=ih*ratio;}
+    pdf.setFontSize(13);pdf.text('HotelAnalyzer AI — Dashboard Visualisasi',10,10);
+    pdf.addImage(imgData,'PNG',10,18,iw,ih);
+    pdf.save('dashboard_hotel_analyzer.pdf');
+    hideLoading();
+  }catch(e){hideLoading();alert('Gagal buat PDF: '+e.message);}
+}
+</script>
+{% endblock %}

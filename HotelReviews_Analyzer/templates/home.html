@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% block title %}Beranda — HotelAnalyzer AI{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-section {
+    background: linear-gradient(135deg, #0f2460 0%, #1a56db 50%, #0ea5e9 100%);
+    border-radius: 24px;
+    padding: 56px 48px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: rgba(255,255,255,.06);
+    border-radius: 50%;
+  }
+
+  .hero-section::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; right: 120px;
+    width: 200px; height: 200px;
+    background: rgba(255,255,255,.04);
+    border-radius: 50%;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(4px);
+  }
+
+  .hero-title {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    letter-spacing: -1px;
+  }
+
+  .hero-desc {
+    font-size: 16px;
+    opacity: .85;
+    max-width: 560px;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn-hero-primary {
+    background: #fff;
+    color: #1a56db;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 28px;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all .2s;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  }
+
+  .btn-hero-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.2);
+    color: #1a56db;
+  }
+
+  .btn-hero-outline {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 12px;
+    padding: 12px 28px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all .2s;
+    backdrop-filter: blur(4px);
+  }
+
+  .btn-hero-outline:hover {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,.15);
+  }
+
+  .stat-item .stat-number {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+  }
+
+  .stat-item .stat-label {
+    font-size: 12px;
+    opacity: .65;
+    font-weight: 500;
+  }
+
+  /* Pipeline section */
+  .pipeline-section {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    margin-bottom: 28px;
+  }
+
+  .pipeline-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 24px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .pipeline-step {
+    flex: 1;
+    min-width: 150px;
+    text-align: center;
+    position: relative;
+  }
+
+  .pipeline-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 28px;
+    right: -1px;
+    width: 50%;
+    height: 2px;
+    background: linear-gradient(90deg, #1a56db, #0ea5e9);
+    z-index: 0;
+  }
+
+  .pipeline-step:not(:first-child)::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    left: -1px;
+    width: 50%;
+    height: 2px;
+    background: linear-gradient(90deg, #1a56db, #0ea5e9);
+    z-index: 0;
+  }
+
+  .step-circle {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 22px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 4px 12px rgba(26,86,219,.25);
+  }
+
+  .step-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+  }
+
+  .step-desc {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.4;
+  }
+
+  /* Aspek Cards */
+  .aspek-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .aspek-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    transition: all .2s;
+    border-top: 4px solid transparent;
+  }
+
+  .aspek-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  }
+
+  .aspek-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+
+  .aspek-name {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .aspek-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+
+  /* Tech stack */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .tech-card {
+    background: #f8faff;
+    border: 1px solid #e8f0fe;
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .tech-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .tech-info .tech-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .tech-info .tech-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 768px) {
+    .hero-title { font-size: 28px; }
+    .aspek-grid { grid-template-columns: repeat(2, 1fr); }
+    .tech-grid  { grid-template-columns: 1fr; }
+    .hero-stats { gap: 20px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="hero-section">
+  <div class="hero-badge">
+    <i class="bi bi-stars"></i> Berbasis Deep Learning ABSA
+  </div>
+  <h1 class="hero-title">
+    Analisis Ulasan Hotel<br>dengan Kecerdasan Buatan
+  </h1>
+  <p class="hero-desc">
+    Platform analisis sentimen berbasis aspek (ABSA) yang membantu manajemen hotel
+    memahami perspektif tamu secara mendalam — berdasarkan 4 aspek kritis perhotelan.
+  </p>
+  <div class="hero-cta">
+    <a href="{{ url_for('analisis_teks') }}" class="btn-hero-primary">
+      <i class="bi bi-chat-quote me-2"></i>Analisis Ulasan
+    </a>
+    <a href="{{ url_for('analisis_file') }}" class="btn-hero-outline">
+      <i class="bi bi-file-earmark-bar-graph me-2"></i>Analisis File Batch
+    </a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-item">
+      <div class="stat-number">7.821</div>
+      <div class="stat-label">Data Training</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">5</div>
+      <div class="stat-label">Model Deep Learning</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">4</div>
+      <div class="stat-label">Aspek Analisis</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">96–98%</div>
+      <div class="stat-label">F1 Score</div>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline ABSA -->
+<div class="pipeline-section">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span style="font-size:20px">⚙️</span>
+    <h5 class="mb-0">Pipeline ABSA — 5 Task Model</h5>
+  </div>
+  <p class="text-muted" style="font-size:14px">
+    Sistem menggunakan pendekatan <strong>ABSA Pipeline</strong> dengan 5 model Deep Learning yang bekerja secara bertahap.
+    Input ulasan diproses oleh Task 1 terlebih dahulu untuk mendeteksi aspek yang dibahas,
+    kemudian Task 2–5 mengklasifikasikan sentimen untuk setiap aspek yang terdeteksi.
+  </p>
+
+  <div class="pipeline-steps">
+    {% set steps = [
+      ('1️⃣', '#dbeafe', 'Deteksi Bahasa', 'Indo / Inggris', '#1d4ed8'),
+      ('🔄', '#e0f2fe', 'Translate', 'Inggris → Indo', '#0369a1'),
+      ('🧹', '#f0fdf4', 'Preprocessing', 'Normalisasi, Stemming', '#166534'),
+      ('🎯', '#fef3c7', 'Task 1 Aspek', 'Deteksi 4 Aspek', '#92400e'),
+      ('💬', '#f5f3ff', 'Task 2–5 Sentimen', 'Positif / Negatif', '#5b21b6'),
+    ] %}
+    {% for icon, bg, title, desc, color in steps %}
+    <div class="pipeline-step">
+      <div class="step-circle" style="background:{{ bg }}; color:{{ color }}">
+        {{ icon }}
+      </div>
+      <div class="step-title">{{ title }}</div>
+      <div class="step-desc">{{ desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- 4 Aspek -->
+<div class="card-modern mb-4">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span style="font-size:20px">🏷️</span>
+    <h5 class="mb-0">4 Aspek Analisis Hotel</h5>
+  </div>
+  <p class="text-muted" style="font-size:14px">
+    Setiap ulasan dianalisis berdasarkan 4 aspek kritis perhotelan menurut
+    Zhang & Verma (2017) dan Cahyaningtyas et al. (2021).
+  </p>
+  <div class="aspek-grid">
+    <div class="aspek-card" style="border-color:#3b82f6">
+      <div class="aspek-icon">🛏️</div>
+      <div class="aspek-name" style="color:#1d4ed8">Room</div>
+      <div class="aspek-desc">Kebersihan, kenyamanan, fasilitas kamar, AC, tempat tidur, kamar mandi</div>
+    </div>
+    <div class="aspek-card" style="border-color:#8b5cf6">
+      <div class="aspek-icon">🏨</div>
+      <div class="aspek-name" style="color:#6d28d9">Hotel</div>
+      <div class="aspek-desc">Fasilitas umum, kebersihan area, kolam renang, gym, dekorasi, suasana</div>
+    </div>
+    <div class="aspek-card" style="border-color:#10b981">
+      <div class="aspek-icon">📍</div>
+      <div class="aspek-name" style="color:#065f46">Location</div>
+      <div class="aspek-desc">Lokasi strategis, akses transportasi, jarak ke pusat kota dan wisata</div>
+    </div>
+    <div class="aspek-card" style="border-color:#f59e0b">
+      <div class="aspek-icon">👨‍💼</div>
+      <div class="aspek-name" style="color:#92400e">Service</div>
+      <div class="aspek-desc">Keramahan staf, kecepatan layanan, profesionalisme, responsif</div>
+    </div>
+  </div>
+</div>
+
+<!-- Teknologi -->
+<div class="card-modern mb-4">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span style="font-size:20px">🤖</span>
+    <h5 class="mb-0">Teknologi Deep Learning</h5>
+  </div>
+  <p class="text-muted" style="font-size:14px">
+    Sistem ini dikembangkan menggunakan 8 skenario perbandingan model dengan 2 arsitektur
+    dan 2 jenis word embedding.
+  </p>
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#dbeafe">🧠</div>
+      <div class="tech-info">
+        <div class="tech-name">CNN — TextCNN (Kim, 2014)</div>
+        <div class="tech-desc">Convolutional Neural Network dengan 3 filter parallel (kernel 3, 4, 5) untuk menangkap pola n-gram teks ulasan.</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#f0fdf4">🔁</div>
+      <div class="tech-info">
+        <div class="tech-name">BiLSTM — Bidirectional LSTM</div>
+        <div class="tech-desc">Membaca teks dari dua arah (kiri→kanan dan kanan→kiri) untuk menangkap konteks kalimat secara penuh.</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#fef3c7">📊</div>
+      <div class="tech-info">
+        <div class="tech-name">Word2Vec (Skip-gram)</div>
+        <div class="tech-desc">Word embedding berbasis konteks kata. Dilatih dari 7.821 ulasan hotel Indonesia untuk representasi semantik.</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:#f5f3ff">⚡</div>
+      <div class="tech-info">
+        <div class="tech-name">FastText (Subword)</div>
+        <div class="tech-desc">Dapat menghasilkan vektor untuk kata yang tidak ada di training data melalui representasi subword. OOV = 0%.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 p-3 rounded-3" style="background:#f0f9ff;border:1px solid #bae6fd">
+    <div class="d-flex align-items-start gap-3">
+      <span style="font-size:24px">🌐</span>
+      <div>
+        <strong style="color:#0369a1">Dukungan Bahasa</strong>
+        <p class="mb-0" style="font-size:13px;color:#475569;margin-top:4px">
+          Sistem mendukung ulasan dalam <strong>Bahasa Indonesia</strong> dan
+          <strong>Bahasa Inggris</strong>. Ulasan berbahasa Inggris otomatis
+          diterjemahkan ke Bahasa Indonesia sebelum dianalisis.
+          Bahasa lain tidak didukung dan akan ditandai secara otomatis.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Pipeline -->
+{% if not pipeline_ready %}
+<div class="alert alert-danger alert-custom d-flex align-items-center gap-2">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>
+    <strong>Model belum siap!</strong> File model .h5 dan tokenizer .pkl
+    belum ditemukan. Pastikan sudah mengikuti petunjuk instalasi.
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

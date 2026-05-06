@@ -1,0 +1,503 @@
+{% extends "base.html" %} {% block title %}Analisis Teks — HotelAnalyzer AI{%
+endblock %} {% block extra_head %}
+<style>
+  .textarea-ulasan {
+    border: 2px solid #e8f0fe;
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 15px;
+    width: 100%;
+    min-height: 140px;
+    resize: vertical;
+    transition: border-color 0.2s;
+    font-family: "Inter", sans-serif;
+    line-height: 1.6;
+    color: #1e293b;
+    outline: none;
+  }
+  .textarea-ulasan:focus {
+    border-color: #1a56db;
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12);
+  }
+  .result-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .aspek-result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .aspek-result-item {
+    border-radius: 14px;
+    padding: 16px 20px;
+    border: 1.5px solid transparent;
+    transition: all 0.2s;
+  }
+  .aspek-result-item.positif {
+    background: #f0fdf4;
+    border-color: #86efac;
+  }
+  .aspek-result-item.negatif {
+    background: #fff1f2;
+    border-color: #fca5a5;
+  }
+  .aspek-result-item.none {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+  .aspek-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+  .sentimen-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sentimen-label {
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* Confidence bar */
+  .confidence-bar-wrap {
+    margin-top: 8px;
+  }
+  .confidence-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 3px;
+  }
+  .confidence-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+  .confidence-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+  .fill-pos {
+    background: linear-gradient(90deg, #16a34a, #4ade80);
+  }
+  .fill-neg {
+    background: linear-gradient(90deg, #dc2626, #f87171);
+  }
+  .fill-none {
+    background: #cbd5e1;
+  }
+  .fill-aspek {
+    background: linear-gradient(90deg, #1a56db, #60a5fa);
+  }
+
+  .translate-box {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .translate-box .translate-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0369a1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .example-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .example-chip {
+    background: #f0f4ff;
+    border: 1px solid #c7d7fd;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #1a56db;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .example-chip:hover {
+    background: #1a56db;
+    color: #fff;
+    border-color: #1a56db;
+  }
+  .info-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .info-chip {
+    background: #f1f5f9;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  @media (max-width: 576px) {
+    .aspek-result-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+  <div
+    style="
+      width: 40px;
+      height: 40px;
+      background: #dbeafe;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    "
+  >
+    💬
+  </div>
+  <div>
+    <h4 class="mb-0">Analisis Teks Ulasan</h4>
+    <div class="text-muted" style="font-size: 13px">
+      Masukkan ulasan hotel untuk dianalisis per aspek
+    </div>
+  </div>
+</div>
+
+<div class="card-modern mb-4">
+  <label class="fw-semibold mb-2" style="font-size: 15px"
+    >Teks Ulasan Hotel</label
+  >
+  <div class="text-muted mb-2" style="font-size: 13px">
+    Mendukung Bahasa Indonesia dan Bahasa Inggris. Minimal 3 kata.
+  </div>
+
+  <textarea
+    id="inputUlasan"
+    class="textarea-ulasan"
+    placeholder="Contoh: Kamarnya sangat nyaman dan bersih, staffnya ramah dan membantu, tapi lokasinya agak jauh dari pusat kota..."
+  ></textarea>
+
+  <div
+    class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2"
+  >
+    <div id="charCount" class="text-muted" style="font-size: 12px">
+      0 karakter
+    </div>
+    <div class="d-flex gap-2">
+      <button
+        class="btn btn-outline-secondary btn-sm rounded-3"
+        onclick="clearInput()"
+      >
+        <i class="bi bi-x-circle me-1"></i>Hapus
+      </button>
+      <button
+        class="btn-primary-custom"
+        onclick="analisisTeks()"
+        id="btnAnalisis"
+      >
+        <i class="bi bi-search me-2"></i>Analisis Ulasan
+      </button>
+    </div>
+  </div>
+
+  <div class="mt-3 pt-3 border-top">
+    <div class="text-muted mb-2" style="font-size: 12px; font-weight: 600">
+      💡 Coba contoh ulasan:
+    </div>
+    <div class="example-chips">
+      <div class="example-chip" onclick="setContoh(0)">🛏️ Room positif</div>
+      <div class="example-chip" onclick="setContoh(1)">📍 Location negatif</div>
+      <div class="example-chip" onclick="setContoh(2)">👨‍💼 Service positif</div>
+      <div class="example-chip" onclick="setContoh(3)">🌐 Bahasa Inggris</div>
+      <div class="example-chip" onclick="setContoh(4)">🏨 Multi aspek</div>
+    </div>
+  </div>
+</div>
+
+<!-- Hasil -->
+<div id="hasilSection" style="display: none">
+  <div id="hasilInfo" class="mb-3"></div>
+  <div class="result-card" id="hasilCard">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span style="font-size: 20px">✅</span>
+      <h5 class="mb-0">Hasil Analisis Sentimen Berbasis Aspek</h5>
+    </div>
+
+    <!-- Kotak translate (muncul jika bahasa Inggris) -->
+    <div id="translateBox" style="display: none" class="translate-box">
+      <div class="translate-label">
+        🔄 Teks Diterjemahkan (Inggris → Indonesia)
+      </div>
+      <div id="translateText" style="line-height: 1.6"></div>
+    </div>
+
+    <!-- Teks asli -->
+    <div
+      class="p-3 mb-3 rounded-3"
+      style="background: #f8fafc; border-left: 3px solid #1a56db"
+    >
+      <div
+        class="text-muted mb-1"
+        style="
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        "
+      >
+        Ulasan
+      </div>
+      <div id="hasilUlasan" style="font-size: 14px; line-height: 1.6"></div>
+    </div>
+
+    <!-- Grid 4 Aspek -->
+    <div class="aspek-result-grid" id="hasilAspekGrid"></div>
+
+    <!-- Info row -->
+    <div class="info-row mt-3">
+      <div class="info-chip" id="infoLang"><i class="bi bi-globe2"></i></div>
+      <div class="info-chip" id="infoWaktu"><i class="bi bi-clock"></i></div>
+    </div>
+  </div>
+</div>
+
+<div id="errorSection" style="display: none">
+  <div class="alert alert-danger alert-custom d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <div id="errorMsg"></div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_scripts %}
+<script>
+  const CONTOH = [
+    "Kamarnya sangat bersih dan nyaman, AC dingin, kasurnya empuk banget!",
+    "Lokasi hotel sangat jauh dari mana-mana, susah dapat transportasi.",
+    "Pelayanan stafnya luar biasa ramah, check in sangat cepat dan profesional.",
+    "The room was clean and comfortable, great air conditioning. Staff was very helpful.",
+    "Kamarnya nyaman dan bersih, fasilitas hotel bagus ada kolam renang. Lokasi strategis dekat mall. Staf kurang responsif.",
+  ];
+
+  const ASPEK_CONFIG = {
+    Room: { icon: "🛏️" },
+    Hotel: { icon: "🏨" },
+    Location: { icon: "📍" },
+    Service: { icon: "👨‍💼" },
+  };
+
+  function setContoh(i) {
+    document.getElementById("inputUlasan").value = CONTOH[i];
+    updateCharCount();
+  }
+
+  function clearInput() {
+    document.getElementById("inputUlasan").value = "";
+    document.getElementById("hasilSection").style.display = "none";
+    document.getElementById("errorSection").style.display = "none";
+    updateCharCount();
+  }
+
+  function updateCharCount() {
+    const len = document.getElementById("inputUlasan").value.length;
+    document.getElementById("charCount").textContent = `${len} karakter`;
+  }
+
+  document
+    .getElementById("inputUlasan")
+    .addEventListener("input", updateCharCount);
+
+  async function analisisTeks() {
+    const teks = document.getElementById("inputUlasan").value.trim();
+    if (!teks) {
+      alert("Masukkan teks ulasan terlebih dahulu!");
+      return;
+    }
+
+    document.getElementById("hasilSection").style.display = "none";
+    document.getElementById("errorSection").style.display = "none";
+    showLoading("Menganalisis ulasan...");
+
+    try {
+      const resp = await fetch("/api/analisis-teks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teks }),
+      });
+      const data = await resp.json();
+      hideLoading();
+
+      if (data.status === "error") {
+        document.getElementById("errorMsg").textContent = data.pesan;
+        document.getElementById("errorSection").style.display = "block";
+        return;
+      }
+
+      renderHasil(teks, data);
+      document.getElementById("hasilSection").style.display = "block";
+    } catch (e) {
+      hideLoading();
+      document.getElementById("errorMsg").textContent =
+        "Gagal menghubungi server. Coba lagi.";
+      document.getElementById("errorSection").style.display = "block";
+    }
+  }
+
+  function renderHasil(teksAsli, data) {
+    // Teks asli
+    document.getElementById("hasilUlasan").textContent = teksAsli;
+
+    // Kotak translate (hanya muncul jika Bahasa Inggris)
+    const translateBox = document.getElementById("translateBox");
+    if (data.is_translated && data.translated && data.translated !== teksAsli) {
+      document.getElementById("translateText").textContent = data.translated;
+      translateBox.style.display = "block";
+    } else {
+      translateBox.style.display = "none";
+    }
+
+    // Grid aspek
+    const grid = document.getElementById("hasilAspekGrid");
+    grid.innerHTML = "";
+    const conf = data.confidence || {};
+
+    for (const [aspek, sentimen] of Object.entries(data.hasil)) {
+      const cfg = ASPEK_CONFIG[aspek];
+      const cls =
+        sentimen === "Positif"
+          ? "positif"
+          : sentimen === "Negatif"
+            ? "negatif"
+            : "none";
+      const icon_s =
+        sentimen === "Positif" ? "✅" : sentimen === "Negatif" ? "❌" : "—";
+      const label_s =
+        sentimen === "Positif"
+          ? "Positif"
+          : sentimen === "Negatif"
+            ? "Negatif"
+            : "Tidak Dibahas";
+
+      // Confidence values
+      const conf_aspek = conf[`${aspek}_aspek`]; // prob aspek dibahas (0-1)
+      const conf_sent = conf[`${aspek}_sentimen`]; // prob positif (0-1)
+
+      // % keyakinan model untuk deteksi aspek
+      // Jika dibahas: tampilkan prob dibahas
+      // Jika tidak dibahas: tampilkan prob TIDAK dibahas = (1 - prob)
+      let aspek_conf_pct = null;
+      let aspek_conf_label = "";
+      if (conf_aspek != null) {
+        if (sentimen !== "-") {
+          // Aspek dibahas: conf_aspek = prob dibahas
+          aspek_conf_pct = Math.round(conf_aspek * 100);
+          aspek_conf_label = `Keyakinan dibahas: ${aspek_conf_pct}%`;
+        } else {
+          // Aspek tidak dibahas: 1 - conf_aspek = prob tidak dibahas
+          aspek_conf_pct = Math.round((1 - conf_aspek) * 100);
+          aspek_conf_label = `Keyakinan tidak dibahas: ${aspek_conf_pct}%`;
+        }
+      }
+
+      // Confidence sentimen
+      let sent_pct = null;
+      let fill_cls = "fill-none";
+      let sent_label = "";
+      if (conf_sent != null && sentimen !== "-") {
+        if (sentimen === "Positif") {
+          sent_pct = Math.round(conf_sent * 100);
+          fill_cls = "fill-pos";
+          sent_label = `Confidence Positif: ${sent_pct}%`;
+        } else {
+          // Prob negatif = 1 - prob_positif
+          sent_pct = Math.round((1 - conf_sent) * 100);
+          fill_cls = "fill-neg";
+          sent_label = `Confidence Negatif: ${sent_pct}%`;
+        }
+      }
+
+      grid.innerHTML += `
+      <div class="aspek-result-item ${cls}">
+        <div class="aspek-label">
+          <span style="font-size:20px">${cfg.icon}</span>
+          <span>${aspek}</span>
+        </div>
+        <div class="sentimen-row">
+          <div class="sentimen-label">
+            <span>${icon_s}</span><span>${label_s}</span>
+          </div>
+          ${aspek_conf_pct != null ? `<span style="font-size:11px;color:#6b7280" title="${aspek_conf_label}">${aspek_conf_pct}% Yakin</span>` : ""}
+        </div>
+        ${
+          sentimen !== "-" && sent_pct != null
+            ? `
+        <div class="confidence-bar-wrap">
+          <div class="confidence-label">
+            <span>${sent_label}</span>
+          </div>
+          <div class="confidence-bar">
+            <div class="confidence-fill ${fill_cls}" style="width:${sent_pct}%"></div>
+          </div>
+        </div>`
+            : ""
+        }
+      </div>`;
+    }
+
+    // Info
+    const langMap = {
+      id: "🇮🇩 Bahasa Indonesia",
+      en: "🇬🇧 Bahasa Inggris (diterjemahkan)",
+    };
+    document.getElementById("infoLang").innerHTML =
+      `<i class="bi bi-globe2"></i> ${langMap[data.lang] || data.lang}`;
+    document.getElementById("infoWaktu").innerHTML =
+      `<i class="bi bi-clock"></i> Waktu: ${data.waktu_detik}s`;
+  }
+
+  document
+    .getElementById("inputUlasan")
+    .addEventListener("keydown", function (e) {
+      if (e.ctrlKey && e.key === "Enter") analisisTeks();
+    });
+</script>
+{% endblock %}
