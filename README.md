@@ -1,4 +1,4 @@
-# HotelAnalyzer AI — Multilabel Aspect-Based Sentiment Analysis for Hotel Reviews
+# HotelAnalyzer AI: Multilabel Aspect-Based Sentiment Analysis for Hotel Reviews
 
 HotelAnalyzer AI reads hotel reviews in Indonesian or English and automatically detects **which aspects of the stay are discussed** (Room, Hotel, Location, Service) and **the sentiment toward each one**. It is the implementation of my undergraduate thesis: *"Komparasi Kinerja Model Deep Learning dan Word Embedding dalam Multilabel Aspect-Based Sentiment Analysis pada Ulasan Hotel Multilingual"* (Information Systems, UPN "Veteran" Jawa Timur).
 
@@ -11,7 +11,7 @@ The project covers the full ML lifecycle: web scraping → manual annotation wit
 
 ## Table of Contents
 
-1. [What is ABSA? (Example)](#what-is-absa-example)
+1. [What is ABSA?](#what-is-absa-example)
 2. [Project Overview](#project-overview)
 3. [Dataset](#dataset)
 4. [Methodology Pipeline](#methodology-pipeline)
@@ -66,8 +66,6 @@ The core research contribution is a **systematic comparison**: 2 architectures (
 |---|---|
 | Source | Tripadvisor, via Apify web scraping |
 | Regions | Bali, Surabaya, Sukabumi (Indonesia's top hotel-density provinces) |
-| Period | 1 Sep 2023 – 30 Nov 2025 |
-| Languages | Indonesian & English (English translated to Indonesian) |
 | Size | **7,821 reviews**, 0 missing values, 0 duplicates |
 | Avg. review rating | 3.82 / 5 (skewed positive) |
 | Region split | Bali 3,942 · Surabaya 2,810 · Sukabumi 1,069 |
@@ -86,19 +84,35 @@ The core research contribution is a **systematic comparison**: 2 architectures (
 ---
 
 ## Methodology Pipeline
+The research follows nine sequential stages, grouped into three phases:
+```mermaid
+flowchart TD
+    A[Web Scraping] --> B[EDA & Cleaning]
+    B --> C[Translation EN to ID]
+    C --> D[Manual Annotation + Krippendorff's Alpha]
+    D --> E[Text Preprocessing]
+    E --> F[Data Splitting 90:10]
+    F --> G[Word Embedding Training]
+    G --> H[Model Training: 8 Scenarios x 5 Tasks, 5-Fold CV]
+    H --> I[Best Scenario Selection + Retraining]
+    I --> J[Testing on Held-out Set]
+    J --> K[Flask Web Deployment]
+```
+**Phase 1 — Data Preparation**
+1. **Web Scraping** — collect hotel reviews from Tripadvisor via Apify (Bali, Surabaya, Sukabumi).
+2. **EDA & Cleaning** — inspect data quality, remove duplicates/short reviews.
+3. **Translation** — convert English reviews to Indonesian for consistent processing.
+4. **Manual Annotation** — 3 independent annotators label each aspect (Positive/Negative/None), validated with Krippendorff's Alpha.
+5. **Text Preprocessing** — cleaning, case folding, normalization, stopword removal, and stemming, kept as two parallel versions (stemmed & non-stemmed).
+6. **Data Splitting** — 90:10 split using iterative stratification, then divided into per-task subsets (1 aspect + 4 sentiment).
 
-```
-Web Scraping (Apify) → EDA → Data Cleaning → Translation (EN→ID)
-  → Manual Annotation (3 annotators + Krippendorff's Alpha)
-  → Text Preprocessing (cleaning, case folding, normalization,
-        stopword removal, stemming — kept as 2 parallel text versions)
-  → Data Split (90:10, iterative stratification, per-task subsets)
-  → Custom Word2Vec / FastText training (Gensim)
-  → Model training: 8 scenarios × 5 tasks, 5-Fold CV
-  → Best-scenario selection (highest F1 Macro) → retrain on full train set
-  → Evaluation on held-out test set
-  → Deployment (Flask web app)
-```
+**Phase 2 — Modeling**
+7. **Word Embedding** — train custom Word2Vec and FastText models (Gensim) on the hotel-review domain.
+8. **Model Training & Selection** — train 8 scenarios (CNN/BiLSTM × Word2Vec/FastText × stemmed/non-stemmed) for all 5 tasks with 5-Fold CV, select the best scenario per task by F1 Macro, then retrain on the full training set.
+9. **Testing** — evaluate the retrained models on a held-out test set to confirm generalization.
+
+**Phase 3 — Deployment**
+10. **Web Deployment** — integrate the 5 best models into a Flask application with an automated inference pipeline and analytics dashboard.
 
 Key implementation choices:
 - **Annotation before preprocessing** to keep the raw context intact for labeling.
